@@ -7,6 +7,7 @@ from bullet import Bullet
 
 class IndentationInvaders:
     """Main game class to manage game behavior"""
+
     def __init__(self):
         """Initialize the game"""
         pygame.init()
