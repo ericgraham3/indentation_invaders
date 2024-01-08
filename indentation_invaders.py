@@ -2,6 +2,7 @@ import sys
 import pygame
 from settings import Settings
 from ship import Ship
+from bullet import Bullet
 
 
 class IndentationInvaders:
@@ -12,21 +13,21 @@ class IndentationInvaders:
         """clock for frame rate"""
         self.clock = pygame.time.Clock()
         self.settings = Settings()
-        self.screen = pygame.display.set_mode((self.settings.screen_width, self.settings.screen_height))
+        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        self.settings.screen_width = self.screen.get_rect().width
+        self.settings.screen_height = self.screen.get_rect().height
         pygame.display.set_caption("__indentation__: invaders")
         pygame.display.set_icon(pygame.image.load("images/icon.png"))
         self.ship = Ship(self)
+        self.bullets = pygame.sprite.Group()
 
     def run_game(self):
         """Start main game loop"""
         while True:
-            # check for keyboard and mouse events
             self._check_events()
-            # update movement status
             self.ship.update()
-            # update images on screen
+            self._update_bullets()
             self._update_screen()
-            # tick clock for refresh rate
             self.clock.tick(60)
 
     def _check_events(self):
@@ -49,6 +50,9 @@ class IndentationInvaders:
         # press q to quit game
         elif event.key == pygame.K_q:
             sys.exit()
+        # press spacebar to fire a bullt
+        elif event.key == pygame.K_SPACE:
+            self._fire_bullet()
 
     def _check_keyup_events(self, event):
         """Respond to key releases"""
@@ -57,10 +61,28 @@ class IndentationInvaders:
         elif event.key == pygame.K_LEFT:
             self.ship.moving_left = False
 
+    def _fire_bullet(self):
+        """create new bullet and add to bullets group"""
+        if len(self.bullets) < self.settings.bullets_allowed:
+            new_bullet = Bullet(self)
+            self.bullets.add(new_bullet)
+
+    def _update_bullets(self):
+        """update position of bullets and get rid of old bullets"""
+        # update movement of bullets
+        self.bullets.update()
+        # get rid of bullets that have disappeared
+        for bullet in self.bullets.copy():
+            if bullet.rect.bottom <= 0:
+                self.bullets.remove(bullet)
+
     def _update_screen(self):
         """Update images on screen"""
-        # redraw background color when screen refreshes
+        # redraw background color when scree       n refreshes
         self.screen.fill(self.settings.bg_color)
+        # draw bullets to screen
+        for bullet in self.bullets.sprites():
+            bullet.draw_bullet()
         # draw ship to screen
         self.ship.blitme()
         # display most recently drawn screen
