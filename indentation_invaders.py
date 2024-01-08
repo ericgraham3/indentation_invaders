@@ -1,8 +1,10 @@
 import sys
 import pygame
+
 from settings import Settings
 from ship import Ship
 from bullet import Bullet
+from alien import Alien
 
 
 class IndentationInvaders:
@@ -21,6 +23,9 @@ class IndentationInvaders:
         pygame.display.set_icon(pygame.image.load("images/icon.png"))
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
+        self.aliens = pygame.sprite.Group()
+
+        self._create_fleet()
 
     def run_game(self):
         """Start main game loop"""
@@ -86,8 +91,16 @@ class IndentationInvaders:
             bullet.draw_bullet()
         # draw ship to screen
         self.ship.blitme()
+        # draw aliens to screen
+        self.aliens.draw(self.screen)
         # display most recently drawn screen
         pygame.display.flip()
+
+    def _create_fleet(self):
+        """Create the fleet of aliens"""
+        # Make one alien
+        alien = Alien(self)
+        self.aliens.add(alien)
 
 
 if __name__ == '__main__':
