@@ -1,7 +1,10 @@
 import sys
+from time import sleep
+
 import pygame
 
 from settings import Settings
+from game_stats import GameStats
 from ship import Ship
 from bullet import Bullet
 from alien import Alien
@@ -13,27 +16,35 @@ class IndentationInvaders:
     def __init__(self):
         """Initialize the game"""
         pygame.init()
-        """clock for frame rate"""
+        # clock for frame rate
         self.clock = pygame.time.Clock()
+        # create settings object and set screen size
         self.settings = Settings()
         self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         self.settings.screen_width = self.screen.get_rect().width
         self.settings.screen_height = self.screen.get_rect().height
         pygame.display.set_caption("__indentation__: invaders")
         pygame.display.set_icon(pygame.image.load("images/icon.png"))
+        # create an instance to store game stats
+        self.stats = GameStats(self)
+        # create ship, bullets, and aliens
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
         self.aliens = pygame.sprite.Group()
-
         self._create_fleet()
+        # set game active flag to True
+        self.game_active = True
 
     def run_game(self):
         """Start main game loop"""
         while True:
             self._check_events()
-            self.ship.update()
-            self._update_bullets()
-            self._update_aliens()
+
+            if self.game_active:
+                self.ship.update()
+                self._update_bullets()
+                self._update_aliens()
+
             self._update_screen()
             self.clock.tick(60)
 
@@ -82,6 +93,19 @@ class IndentationInvaders:
         for bullet in self.bullets.copy():
             if bullet.rect.bottom <= 0:
                 self.bullets.remove(bullet)
+        self._check_bullet_alien_collisions()
+
+    def _check_bullet_alien_collisions(self):
+        """Respond to bullet-alien collission."""
+        # check for any bullets that have hit aliens
+        # if so, remove bullet and alien
+        collisions = pygame.sprite.groupcollide(
+            self.bullets, self.aliens, True, True)
+        # check to see if fleet is empty
+        if not self.aliens:
+            # if no fleet, destroy existing bullets and create new fleet
+            self.bullets.empty()
+            self._create_fleet()
 
     def _update_screen(self):
         """Update images on screen"""
@@ -126,6 +150,11 @@ class IndentationInvaders:
         """check if the fleet is at an edge, then update positions"""
         self._check_fleet_edges()
         self.aliens.update()
+        # look for alien-ship collisions
+        if pygame.sprite.spritecollideany(self.ship, self.aliens):
+            self._ship_hit()
+        # look for aliens hitting bottom of the screen
+            self._check_aliens_bottom()
 
     def _check_fleet_edges(self):
         """respond appropriately if any aliens have reached an edge"""
@@ -139,6 +168,33 @@ class IndentationInvaders:
         for alien in self.aliens.sprites():
             alien.rect.y += self.settings.fleet_drop_speed
         self.settings.fleet_direction *= -1
+
+    def _ship_hit(self):
+        """respond to the player ship being hit by an alien"""
+        if self.stats.ships_left > 0:
+            # decrement ships left
+            self.stats.ships_left -= 1
+
+            # get rid of any remaining bullets and aliens
+            self.bullets.empty()
+            self.aliens.empty()
+
+            # create new fleet and center ship
+            self._create_fleet()
+            self.ship.center_ship()
+
+            # pause
+            sleep(0.5)
+        else:
+            self.game_active = False
+
+    def _check_aliens_bottom(self):
+        """check if any aliens have reached the bottom of the screen"""
+        for alien in self.aliens.sprites():
+            if alien.rect.bottom >= self.settings.screen_height:
+                # Treat this the same as if the ship got hit
+                self._ship_hit()
+                break
 
 
 if __name__ == '__main__':
