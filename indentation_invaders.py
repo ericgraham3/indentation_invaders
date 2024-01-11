@@ -5,6 +5,7 @@ import pygame
 
 from settings import Settings
 from game_stats import GameStats
+from scoreboard import Scoreboard
 from button import Button
 from ship import Ship
 from bullet import Bullet
@@ -17,8 +18,10 @@ class IndentationInvaders:
     def __init__(self):
         """Initialize the game"""
         pygame.init()
+
         # clock for frame rate
         self.clock = pygame.time.Clock()
+
         # create settings object and set screen size
         self.settings = Settings()
         self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -26,15 +29,20 @@ class IndentationInvaders:
         self.settings.screen_height = self.screen.get_rect().height
         pygame.display.set_caption("__indentation__: invaders")
         pygame.display.set_icon(pygame.image.load("images/icon.png"))
-        # create an instance to store game stats
+
+        # create an instance to store game stats and create a scoreboard
         self.stats = GameStats(self)
+        self.sb = Scoreboard(self)
+
         # create ship, bullets, and aliens
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
         self.aliens = pygame.sprite.Group()
         self._create_fleet()
+
         # set game active flag to True
         self.game_active = False
+
         # make the Play button
         self.play_button = Button(self, "Play")
 
@@ -69,9 +77,15 @@ class IndentationInvaders:
         """Start a new game when the player clicks Play button"""
         button_clicked = self.play_button.rect.collidepoint(mouse_pos)
         if button_clicked and not self.game_active:
+            # reset game settings
+            self.settings.initialize_dynamic_settings()
+
             # reset game stats
             self.stats.reset_stats()
             self.game_active = True
+            self.sb.prep_score()
+            self.sb.prep_level()
+            self.sb.prep_ships()
 
             # get rid of remaining bullets and aliens
             self.bullets.empty()
@@ -126,27 +140,47 @@ class IndentationInvaders:
         # if so, remove bullet and alien
         collisions = pygame.sprite.groupcollide(
             self.bullets, self.aliens, True, True)
+
+        if collisions:
+            for aliens in collisions.values():
+                self.stats.score += self.settings.alien_points * len(aliens)
+            self.sb.prep_score()
+            self.sb.check_high_score()
+
         # check to see if fleet is empty
         if not self.aliens:
             # if no fleet, destroy existing bullets and create new fleet
             self.bullets.empty()
             self._create_fleet()
+            self.settings.increase_speed()
+
+            # increase level
+            self.stats.level += 1
+            self.sb.prep_level()
 
     def _update_screen(self):
         """Update images on screen"""
-        # redraw background color when scree       n refreshes
+        # redraw background color when screen refreshes
         self.screen.fill(self.settings.bg_color)
+
         # draw bullets to screen
         for bullet in self.bullets.sprites():
             bullet.draw_bullet()
+
         # draw ship to screen
         self.ship.blitme()
+
         # draw aliens to screen
         self.aliens.draw(self.screen)
-        # display most recently drawn screen
+
+        # Draw the score information
+        self.sb.show_score()
+
         # draw play button if game is inactive
         if not self.game_active:
             self.play_button.draw_button()
+
+        # display most recently drawn screen
         pygame.display.flip()
 
     def _create_fleet(self):
@@ -200,8 +234,9 @@ class IndentationInvaders:
     def _ship_hit(self):
         """respond to the player ship being hit by an alien"""
         if self.stats.ships_left > 0:
-            # decrement ships left
+            # decrement ships left and update scoreboard
             self.stats.ships_left -= 1
+            self.sb.prep_ships()
 
             # get rid of any remaining bullets and aliens
             self.bullets.empty()
